@@ -10,6 +10,7 @@ services:
         - "./mariadb/conf.d:/etc/mysql/conf.d"
         - "./mariadb/data:/var/lib/mysql"
       environment:
+        MARIADB_ROOT_HOST: '%'
         MARIADB_DATABASE: example
         MARIADB_USER: root
         MARIADB_PASSWORD: root
