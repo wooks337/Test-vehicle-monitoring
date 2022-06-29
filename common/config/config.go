@@ -1,36 +1,51 @@
-package config
+package common
 
 type Config struct {
-	Port            string                   `toml:"port" default:"80" env:"PORT"`
-	ServerMode      string                   `toml:"server_mode" env:"SERVER_MODE"`
-	TimeZone        string                   `toml:"timezone"`
-	Cors            string                   `toml:"cors"`
-	ServiceDB       DatabaseConnection       `toml:"service_db"`
-	MongoDB         MongoDBConnection        `toml:"mongo_db"`
-	Redis           Redis                    `toml:"redis"`
-	Auth            map[string]Authorization `toml:"auth"`
-	AdminOAuth2     AdminOAuth2              `toml:"adminOAuth2"`
-	Referer         Referer                  `toml:"referer"`
-	RejectExtension RejectExtension          `toml:"reject_extension"`
-	DebugLevel      bool                     `toml:"debug_level"`
-	BodyLog         BodyLog                  `toml:"body_log"`
-	ErrorLogFile    string                   `toml:"error_log_file"`
-	ServiceID       string                   `toml:"service_id"`
-	ProviderID      string                   `toml:"provider_id"`
+	Port            string             `toml:"port"`
+	ServerMode      string             `toml:"server_mode"`
+	DebugLevel      bool               `toml:"debug_level"`
+	ErrorLogFile    string             `toml:"error_log_file"`
+	ServiceID       string             `toml:"service_id"`
+	ProviderID      string             `toml:"provider_id"`
+	TimeZone        string             `toml:"timezone"`
+	Referer         Referer            `toml:"referer"`
+	RejectExtension RejectExtension    `toml:"reject_extension"`
+	Cors            Cors               `toml:"cors"`
+	ServiceDB       DatabaseConnection `toml:"service_db"`
+	BodyLog         BodyLog            `toml:"body_log"`
+
+	MongoDB     MongoDBConnection        `toml:"mongo_db"`
+	Redis       Redis                    `toml:"redis"`
+	Auth        map[string]Authorization `toml:"auth"`
+	AdminOAuth2 AdminOAuth2              `toml:"admin_oauth2"`
 }
 
 type Cors struct {
-	Methods []string `toml:"methods" env:"CORS_METHODS"`
-	Origins []string `toml:"origins" env:"CORS_ORIGINS"`
-	Headers []string `toml:"headers" env:"CORS_HEADERS"`
+	Methods []string `toml:"methods"`
+	Origins []string `toml:"origins"`
+	Headers []string `toml:"headers"`
 }
 
 type Referer struct {
-	RefererDomains []string `toml:"referer_domains" env:"REFERER_DOMAINS"`
+	RefererDomains []string `toml:"referer_domains"`
 }
 
 type RejectExtension struct {
 	CompressedFileExtensions []string `toml:"compressed_file_extensions"`
+}
+
+type DatabaseConnection struct {
+	DriverName     string `toml:"driver_name"`
+	DataSourceName string `toml:"data_source_name"`
+	RootSourceName string `toml:"root_source_name"`
+	LogMode        bool   `toml:"log_mode"`
+	MaxIdleConns   int    `toml:"max_idle_conns"`
+	MaxOpenConns   int    `toml:"max_open_conns"`
+}
+
+type BodyLog struct {
+	EnableRequestBody   bool `toml:"enable_request_body"`
+	EnableResponsesBody bool `toml:"enable_response_body"`
 }
 
 type Database struct {
@@ -43,7 +58,7 @@ type APIServerInfo struct {
 	Host            string   `toml:"host"`
 	GRPCPort        int      `toml:"grpc_port"`
 	GRPCGatewayPort int      `toml:"grpc_gateway_port"`
-	Port            int      `toml:"database"`
+	Port            int      `toml:"port"`
 	Database        Database `toml:"database"`
 }
 
@@ -66,21 +81,7 @@ type Redis struct {
 	AuthStorePwd string `toml:"auth_store_pwd" env:"REDIS_AUTH_STORE_PWD"`
 }
 
-type DatabaseConnection struct {
-	DriverName     string `toml:"driver_name" env:"DRIVER_NAME"`
-	DataSourceName string `toml:"data_source_name" env:"DATA_SOURCE_NAME"`
-	RootSourceName string `toml:"root_source_name" env:"ROOT_SOURCE_NAME"`
-	LogMode        bool   `toml:"log_mode" env:"LOG_MODE"`
-	MaxIdleConns   int    `toml:"max_idle_conns" env:"MAX_IDLE_CONNS"`
-	MaxOpenConns   int    `toml:"max_open_conns" env:"MAX_OPEN_CONNS"`
-}
-
 type MongoDBConnection struct {
 	URL      string `toml:"url"`
 	Database string `toml:"database"`
-}
-
-type BodyLog struct {
-	EnableRequestBody   bool `toml:"enable_request_body" default:"true" env:"ENABLE_REQUEST_BODY_LOG"`
-	EnableResponsesBody bool `toml:"enable_response_body" default:"true" env:"ENABLE_RESPONSE_BODY_LOG"`
 }
