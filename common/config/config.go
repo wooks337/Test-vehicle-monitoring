@@ -14,10 +14,10 @@ type Config struct {
 	ServiceDB       DatabaseConnection `toml:"service_db"`
 	BodyLog         BodyLog            `toml:"body_log"`
 
-	MongoDB     MongoDBConnection        `toml:"mongo_db"`
-	Redis       Redis                    `toml:"redis"`
-	Auth        map[string]Authorization `toml:"auth"`
-	AdminOAuth2 AdminOAuth2              `toml:"admin_oauth2"`
+	MongoDB      MongoDBConnection        `toml:"mongo_db"`
+	Redis        Redis                    `toml:"redis"`
+	Auth         map[string]Authorization `toml:"auth"`
+	GoogleOAuth2 GoogleOAuth2             `toml:"google_oauth2"`
 }
 
 type Cors struct {
@@ -68,12 +68,13 @@ type Authorization struct {
 	ClientSecret string `toml:"client_secret"`
 }
 
-type AdminOAuth2 struct {
-	ClientID      string `toml:"client_id"`
-	ClientSecret  string `toml:"client_secret"`
-	RedirectURI   string `toml:"redirect_uri"`
-	Authorization string `toml:"authorization"`
-	URL           string `toml:"url"`
+type GoogleOAuth2 struct {
+	CallbackURL  string `toml:"callback_url"`
+	OathUrlAPI   string `toml:"oath_google_url_api"`
+	ScopeEmail   string `toml:"scope_email"`
+	ScopeProfile string `toml:"scope_profile"`
+	ClientID     string `toml:"client_id"`
+	ClientSecret string `toml:"client_secret"`
 }
 
 type Redis struct {

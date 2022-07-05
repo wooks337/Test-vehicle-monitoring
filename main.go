@@ -7,7 +7,6 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/configor"
-	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,8 +24,6 @@ import (
 	"test-vehcile-monitoring/handler"
 	"test-vehcile-monitoring/message"
 	gorm_middleware "test-vehcile-monitoring/monitoring/gorm"
-	http_opentracing "test-vehcile-monitoring/monitoring/httpwares/opentracing"
-	"test-vehcile-monitoring/session"
 	"test-vehcile-monitoring/session/sessionstore"
 )
 
@@ -65,47 +62,47 @@ func main() {
 	authRouter.NotFoundHandler = http.HandlerFunc(notFound)
 	authHandler(authRouter, serviceLog)
 
-	middleware := session.GatewayMiddleware{
+	/*middleware := session.GatewayMiddleware{
 		Logger:       serviceLog,
 		SessionStore: sessionStore,
 		TokenStore:   tokenStore,
 		ServiceDB:    serviceDB,
 		Config:       config,
-	}
+	}*/
 
 	authRouter.Use(
-		middleware.SessionProxy,  // 실제 세션등을 관리하는 미들웨어
-		middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
-		middleware.TraceLogProxy, // Trace 미들웨어
-		middleware.CacheProxy,
-		http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
+	//middleware.SessionProxy,  // 실제 세션등을 관리하는 미들웨어
+	//middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
+	//middleware.TraceLogProxy, // Trace 미들웨어
+	//middleware.CacheProxy,
+	//http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
 	)
 
 	// 로그인이 필요한 경로
-	http.Handle("/", handlers.CompressHandler(allowCORS(authRouter, config.Cors)))
+	//http.Handle("/", handlers.CompressHandler(allowCORS(authRouter, config.Cors)))
 
-	noAuthRouter := mux.NewRouter().PathPrefix("/api/noAuth").Subrouter()
-	noAuthRouter.NotFoundHandler = http.HandlerFunc(notFound)
-	noAuthHandler(noAuthRouter, serviceLog)
+	nonAuthRouter := mux.NewRouter().PathPrefix("/api/nonauth").Subrouter()
+	nonAuthRouter.NotFoundHandler = http.HandlerFunc(notFound)
+	nonAuthHandler(nonAuthRouter, serviceLog)
 
-	noAuthRouter.Use(
-		middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
-		middleware.TraceLogProxy, // Trace 미들웨어
-		middleware.CacheProxy,
-		http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
+	nonAuthRouter.Use(
+	//middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
+	//middleware.TraceLogProxy, // Trace 미들웨어
+	//middleware.CacheProxy,
+	//http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
 	)
 
 	// 로그인이 필요 없는 경로
-
 	http.Handle("/api/auth/", allowCORS(authRouter, config.Cors))
-	//http.Handle("/api/noAuth/user", allowCORS(noAuthRouter, config.Cors))
-	//http.Handle("/api/noAuth/public", allowCORS(noAuthRouter, config.Cors))
-	//http.Handle("/api/noAuth/internal", allowCORS(noAuthRouter, config.Cors))
+	http.Handle("/api/nonauth/", allowCORS(nonAuthRouter, config.Cors))
+	//http.Handle("/api/noAuth/public", allowCORS(nonAuthRouter, config.Cors))
+	//http.Handle("/api/noAuth/internal", allowCORS(nonAuthRouter, config.Cors))
 	//http.Handle("/health-check", allowCORS(healthRouter, config.Cors))
 	//http.Handle("/api/noAuth/openapi", allowCORS(openApiRouter, config.Cors))
 
 	port := config.Port
 	log.Println(fmt.Sprintf("Server starting on port %v", port))
+	http.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("./public"))))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("%v", port), nil))
 }
 
@@ -164,8 +161,18 @@ func authHandler(router *mux.Router, serviceLog *logrus.Entry) {
 	router.HandleFunc("/vehicle", vehicleHandler.ListVehicles).Methods(http.MethodGet)
 }
 
-func noAuthHandler(router *mux.Router, serviceLog *logrus.Entry) {
+func nonAuthHandler(router *mux.Router, serviceLog *logrus.Entry) {
 
+	authhandler := &handler.AuthServiceHandler{
+		Logger:              serviceLog,
+		Config:              config,
+		OauthConfig:         nil,
+		ServiceDB:           serviceDB,
+		ServiceSessionStore: tokenStore,
+	}
+
+	router.HandleFunc("/google/login", authhandler.GoogleLogin).Methods(http.MethodGet)
+	router.HandleFunc("/google/callback", authhandler.GoogleAuthCallback).Methods(http.MethodGet)
 }
 
 func getLogrusEntry(port string) *logrus.Entry {

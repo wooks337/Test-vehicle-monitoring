@@ -6,9 +6,6 @@ services:
       restart: always
       ports:
         - 3306:3306
-      volumes:
-        - "./mariadb/conf.d:/etc/mysql/conf.d"
-        - "./mariadb/data:/var/lib/mysql"
       environment:
         MARIADB_ROOT_HOST: '%'
         MARIADB_DATABASE: example
