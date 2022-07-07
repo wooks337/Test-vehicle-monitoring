@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -14,6 +15,7 @@ import (
 	"log"
 	"net/http"
 	common "test-vehcile-monitoring/common/config"
+	"test-vehcile-monitoring/model"
 	"test-vehcile-monitoring/session/sessionstore"
 	"time"
 )
@@ -66,6 +68,24 @@ func (h *AuthServiceHandler) GoogleAuthCallback(w http.ResponseWriter, r *http.R
 		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 		return
 	} // -- 3-1
+
+	user := model.User{}
+	err = json.Unmarshal(data, &user)
+	if err != nil {
+		log.Println("Invalid data :", err)
+	}
+
+	serviceInfo := &sessionstore.ServiceSessionInfo{
+		UserID: user.ID,
+		Email:  user.Email,
+		Name:   user.Name,
+		Locale: user.Locale,
+	}
+
+	err = h.ServiceSessionStore.SetSessionInfo(user.ID, "", serviceInfo)
+	if err != nil {
+		log.Println("Session is not saved...")
+	}
 
 	fmt.Fprint(w, string(data)) // -- 3-2
 }

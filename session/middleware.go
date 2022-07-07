@@ -3,13 +3,16 @@ package session
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/gorilla/sessions"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 	"gopkg.in/boj/redistore.v1"
 	"gorm.io/gorm"
+	"net"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	common "test-vehcile-monitoring/common/config"
@@ -35,7 +38,7 @@ const (
 )
 
 // Todo URL 정규식 체워 넣기
-var req, _ = regexp.Compile("")
+var req, _ = regexp.Compile(`(^/[\w\d_-]+)[/?]?`)
 
 var unFobiddenHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusForbidden)
@@ -134,8 +137,7 @@ func (middleware *GatewayMiddleware) TraceLogProxy(next http.Handler) http.Handl
 }
 
 func (middleware *GatewayMiddleware) SessionProxy(h http.Handler) http.Handler {
-	// Todo
-	/*sessionHandler := func(w http.ResponseWriter, r *http.Request) {
+	sessionHandler := func(w http.ResponseWriter, r *http.Request) {
 
 		cookie, exists := r.Header["cookie"]
 		if !exists {
@@ -146,11 +148,63 @@ func (middleware *GatewayMiddleware) SessionProxy(h http.Handler) http.Handler {
 			}
 		}
 
-		requestLogger := middleware.getLogger(r).WithField(lo)
+		requestLogger := middleware.getLogger(r).WithField(logger.LogTargetApp, ServiceName)
+		requestLogger.Info(fmt.Sprintf("Cookie=[%v]", cookie))
 
-	}*/
+		session, sessionInfo, ok := middleware.getSessionInfo(w, r, requestLogger)
+		if !ok {
+			requestLogger.Info("sessionInfo Get Error: %v", ok)
+			return
+		}
 
-	return nil
+		refererDomains := middleware.Config.Referer.RefererDomains
+		if len(refererDomains) > 0 {
+			cnt := 0
+			for _, refererDomain := range refererDomains {
+				refererUrl, _ := url.Parse(strings.ToLower(refererDomain))
+				referHost, referPort, _ := net.SplitHostPort(refererUrl.Host)
+				if referPort == "" {
+					referHost = refererUrl.Host
+				}
+				if referHost != "" && strings.Contains(r.Header.Get("Referer"), referHost) {
+					cnt++
+				}
+			}
+			if cnt == 0 {
+				unFobiddenHandler.ServeHTTP(w, r)
+				w.Write([]byte("Referer invalid"))
+				return
+			}
+			logrus.Info("Referer : ", r.Header.Get("Referer"))
+		}
+
+		if _, err := uuid.Parse(sessionInfo.UserID); err != nil {
+			unauthorizedHandler.ServeHTTP(w, r)
+			return
+		}
+
+		defer func() {
+			if err := middleware.SessionStore.Save(r, w, session); err != nil {
+				requestLogger.Errorf("fail to session refreshing [%v, %v]", session, err)
+			} else {
+				requestLogger.Infof("session refresh [%s]", session.ID)
+			}
+		}()
+
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, DataName, sessionInfo)
+		h.ServeHTTP(w, r.WithContext(context.WithValue(ctx, "session", session)))
+
+		//requestUrl := r.RequestURI
+
+		if strings.Contains(r.RequestURI, "?") {
+			//runes := []rune(r.RequestURI)
+			//requestUrl = string(runes[0:strings.Index(r.RequestURI, "?")])
+		}
+
+	}
+
+	return http.HandlerFunc(sessionHandler)
 }
 
 func (middleware *GatewayMiddleware) getLogger(r *http.Request) *logrus.Entry {

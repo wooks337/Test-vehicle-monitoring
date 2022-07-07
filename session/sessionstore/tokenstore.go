@@ -17,6 +17,9 @@ type ServiceSessionInfo struct {
 	LoginTime *time.Time `json:"LoginTime"`
 	ExpireOn  *time.Time `json:"ExpiredOn"`
 	UserID    string     `json:"UserID"`
+	Email     string     `json:"Email"`
+	Name      string     `json:"Name"`
+	Locale    string     `json:"Locale"`
 	XDeviceID string     `json:"XDeviceID"`
 }
 
@@ -75,7 +78,7 @@ func (ss *ServiceSessionStore) GetSessionInfo(userID string, accessToken string)
 	}
 
 	if accessToken != "" {
-		key := userID + "." + accessToken
+		key := userID // + "." + accessToken
 		val, err := ss.client.Get(key).Result()
 
 		if err == nil {
@@ -121,7 +124,7 @@ func (ss *ServiceSessionStore) SetSessionInfo(userID string, accessToken string,
 
 		// 이미 만료된 것은 세팅할 필요가 없음 삭제하거나 경고 남길지를 더 검토가 필요함
 		if expireDuration > 0 {
-			key := userID + ":" + accessToken
+			key := userID //+ ":" + accessToken
 			err = ss.client.Set(key, sessionInfoStr, expireDuration).Err()
 		}
 
