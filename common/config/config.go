@@ -1,23 +1,23 @@
 package common
 
 type Config struct {
-	Port            string             `toml:"port"`
-	ServerMode      string             `toml:"server_mode"`
-	DebugLevel      bool               `toml:"debug_level"`
-	ErrorLogFile    string             `toml:"error_log_file"`
-	ServiceID       string             `toml:"service_id"`
-	ProviderID      string             `toml:"provider_id"`
-	TimeZone        string             `toml:"timezone"`
-	Referer         Referer            `toml:"referer"`
-	RejectExtension RejectExtension    `toml:"reject_extension"`
-	Cors            Cors               `toml:"cors"`
-	ServiceDB       DatabaseConnection `toml:"service_db"`
-	BodyLog         BodyLog            `toml:"body_log"`
-
-	MongoDB      MongoDBConnection        `toml:"mongo_db"`
-	Redis        Redis                    `toml:"redis"`
-	Auth         map[string]Authorization `toml:"auth"`
-	GoogleOAuth2 GoogleOAuth2             `toml:"google_oauth2"`
+	Port            string                   `toml:"port"`
+	ServerMode      string                   `toml:"server_mode"`
+	DebugLevel      bool                     `toml:"debug_level"`
+	ErrorLogFile    string                   `toml:"error_log_file"`
+	ServiceID       string                   `toml:"service_id"`
+	ProviderID      string                   `toml:"provider_id"`
+	TimeZone        string                   `toml:"timezone"`
+	Referer         Referer                  `toml:"referer"`
+	RejectExtension RejectExtension          `toml:"reject_extension"`
+	Cors            Cors                     `toml:"cors"`
+	ServiceDB       DatabaseConnection       `toml:"service_db"`
+	BodyLog         BodyLog                  `toml:"body_log"`
+	MongoDB         MongoDBConnection        `toml:"mongo_db"`
+	Redis           Redis                    `toml:"redis"`
+	Auth            map[string]Authorization `toml:"auth"`
+	GoogleOAuth2    GoogleOAuth2             `toml:"google_oauth2"`
+	Trace           Trace                    `toml:"trace"`
 }
 
 type Cors struct {
@@ -85,4 +85,10 @@ type Redis struct {
 type MongoDBConnection struct {
 	URL      string `toml:"url"`
 	Database string `toml:"database"`
+}
+
+type Trace struct {
+	JaegerAgentHost string  `toml:"jaeger_agent_host" env:"JAEGER_AGENT_HOST"`
+	SamplerType     string  `toml:"sampler_type" env:"JAEGER_SAMPLER_TYPE"`
+	SamplerParam    float64 `toml:"sampler_param" env:"JAEGER_SAMPLER_PARAM"`
 }

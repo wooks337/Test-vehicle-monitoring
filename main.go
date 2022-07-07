@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/configor"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -14,6 +15,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	gorm_logger "gorm.io/gorm/logger"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -23,7 +25,11 @@ import (
 	"test-vehcile-monitoring/filelogger"
 	"test-vehcile-monitoring/handler"
 	"test-vehcile-monitoring/message"
+	"test-vehcile-monitoring/monitoring/ctxlogger"
 	gorm_middleware "test-vehcile-monitoring/monitoring/gorm"
+	http_opentracing "test-vehcile-monitoring/monitoring/httpwares/opentracing"
+	"test-vehcile-monitoring/monitoring/tracer"
+	"test-vehcile-monitoring/session"
 	"test-vehcile-monitoring/session/sessionstore"
 )
 
@@ -47,8 +53,18 @@ func main() {
 	log.Println("main start")
 	defer log.Println("main closed")
 
-	opaInit()
+	InitOpa()
 	loadConfig()
+
+	if config.DebugLevel {
+		ctxlogger.Init(logrus.DebugLevel)
+	} else {
+		ctxlogger.Init(logrus.InfoLevel)
+	}
+
+	log.Println("Start tracing")
+	trace := startTracing(config.Trace)
+	defer trace.Close()
 
 	serviceLog = getLogrusEntry(config.Port)
 
@@ -62,20 +78,20 @@ func main() {
 	authRouter.NotFoundHandler = http.HandlerFunc(notFound)
 	authHandler(authRouter, serviceLog)
 
-	/*middleware := session.GatewayMiddleware{
+	middleware := session.GatewayMiddleware{
 		Logger:       serviceLog,
 		SessionStore: sessionStore,
 		TokenStore:   tokenStore,
 		ServiceDB:    serviceDB,
 		Config:       config,
-	}*/
+	}
 
 	authRouter.Use(
-	//middleware.SessionProxy,  // 실제 세션등을 관리하는 미들웨어
-	//middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
-	//middleware.TraceLogProxy, // Trace 미들웨어
-	//middleware.CacheProxy,
-	//http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
+		//middleware.SessionProxy,  // 실제 세션등을 관리하는 미들웨어
+		middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
+		middleware.TraceLogProxy, // Trace 미들웨어
+		middleware.CacheProxy,
+		http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
 	)
 
 	// 로그인이 필요한 경로
@@ -86,10 +102,10 @@ func main() {
 	nonAuthHandler(nonAuthRouter, serviceLog)
 
 	nonAuthRouter.Use(
-	//middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
-	//middleware.TraceLogProxy, // Trace 미들웨어
-	//middleware.CacheProxy,
-	//http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
+		middleware.LogProxy,      // 어떤 메서드가 호출되는지 출력하는 미들웨어
+		middleware.TraceLogProxy, // Trace 미들웨어
+		middleware.CacheProxy,
+		http_opentracing.Middleware(opentracing.GlobalTracer(), http_opentracing.GorillaMuxOperationFinder), // Jeager
 	)
 
 	// 로그인이 필요 없는 경로
@@ -110,13 +126,28 @@ func TerminateBeforeDisconnection() {
 	log.Println("main.go termination before disconnection from component...")
 }
 
-func opaInit() {
+func InitOpa() {
 
 	// init opa
 	/*
 		Todo open policy agent
 	*/
 
+}
+
+func startTracing(env common.Trace) io.Closer {
+	closer, err := tracer.Init(tracer.Configuration{
+		ServiceName:  "test",
+		HostPort:     env.JaegerAgentHost,
+		SamplerType:  env.SamplerType,
+		SamplerParam: env.SamplerParam,
+	})
+
+	if err != nil {
+		log.Fatal("Tracer generator error : ", err)
+	}
+
+	return closer
 }
 
 func loadConfig() {
