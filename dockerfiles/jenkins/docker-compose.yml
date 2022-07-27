@@ -1,0 +1,9 @@
+version: '3.9'
+services:
+  jenkins:
+    image: jenkins/jenkins:latest
+    container_name: jenkins
+    environment:
+      - "TZ=Asia/Seoul"
+    ports:
+      - "9090:8080"
